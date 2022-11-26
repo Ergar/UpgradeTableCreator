@@ -20,6 +20,8 @@ namespace UpgradeTableCreator
 
             var connectionString = @$"Server={_options.Server};Database={_options.Database};Trusted_Connection=True;";
             Console.WriteLine("Using connectionstring: " + connectionString);
+
+            var sw = Stopwatch.StartNew();
             using (var conn = new SqlConnection(connectionString))
             {
                 try
@@ -31,13 +33,15 @@ namespace UpgradeTableCreator
                     command.Parameters.AddWithValue("@FromTableId", _options.FromTableId);
                     command.Parameters.AddWithValue("@ToTableId", (_options.ToTableId == 0 ? _options.FromTableId : _options.ToTableId));
 
+                    Console.Write($"Reading metadata of tables from database..");
                     var dataReader = command.ExecuteReader();
                     while (dataReader.Read())
                     {
-                        Console.WriteLine($"Reading metadata of table {dataReader[1]}");
                         var output = (byte[])dataReader[0];
                         compressedData.Add(output);
                     }
+                    sw.Stop();
+                    Console.WriteLine($"FINISHED ({sw.ElapsedMilliseconds}ms)");
                 }
                 catch (Exception ex)
                 {
@@ -49,9 +53,9 @@ namespace UpgradeTableCreator
             }
 
             Console.Write("Process metadata..");
-            var sw = Stopwatch.StartNew();
-            var tableReader = new XmlTableReader();
+            sw.Restart();
 
+            var tableReader = new XmlTableReader();
             var resultMs = new MemoryStream();
             var sr = new StreamReader(resultMs);
 
