@@ -31,7 +31,7 @@ namespace UpgradeTableCreator
                     var command = conn.CreateCommand();
                     command.CommandText = "SELECT Metadata, [Object ID] FROM [dbo].[Object Metadata] WHERE [Object Type] = 1 AND ([Object ID] >= @FromTableId AND [Object ID] <= @ToTableId)";
                     command.Parameters.AddWithValue("@FromTableId", _options.FromTableId);
-                    command.Parameters.AddWithValue("@ToTableId", (_options.ToTableId == 0 ? _options.FromTableId : _options.ToTableId));
+                    command.Parameters.AddWithValue("@ToTableId", (_options.ToTableId <= 0 ? _options.FromTableId : _options.ToTableId));
 
                     Console.Write($"Reading metadata of tables from database..");
                     var dataReader = command.ExecuteReader();
