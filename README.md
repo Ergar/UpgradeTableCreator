@@ -12,8 +12,10 @@ Usage example: server=localhost database=localdb
 ### [Database] (required): Database name
 ### [FromTableId] (default 0, optional)
 ### [ToTableId] (default 0, optional)
+  If 0 then the value of FromTableId will be used
 ### [FromFieldId] (default 0, optional)
 ### [ToFieldId] (default 0, optional)
+  If 0 then this value will be ignored
 ### [StartNewTableId] (default 0, optional)
   The starting id for the new created tables
 ### [TablePrefix] (default "UPG ", optional)
@@ -22,3 +24,5 @@ Usage example: server=localhost database=localdb
   Prefixes the field name. Skips the renaming if it will exceed 30 characters. 
 ### [VersionList]
   The new version list the table will have.
+## Requirements
+.NET 6
