@@ -2,7 +2,7 @@
 
 namespace UpgradeTableCreator
 {
-    class TableToTextExporter
+    class TableToTextExporter : ITableExporter
     {
         private readonly SqlMetaTableReaderOption _options;
         private readonly List<MetaTable> _tables;
@@ -15,19 +15,31 @@ namespace UpgradeTableCreator
             _options = options;
         }
 
-        public string GetText()
+        public void Export()
         {
             var sb = new StringBuilder();
 
             _currentTableId = _options.StartNewTableId;
             foreach (var table in _tables)
             {
+                Console.WriteLine($"Processing table {table.Name}");
                 var tableText = TableToText(table);
                 if (!string.IsNullOrEmpty(tableText))
                     sb.AppendLine(tableText);
-            }
 
-            return sb.ToString();
+                if (_options.SplitFile)
+                    WriteToFile($"TAB_{_currentTableId}", tableText);
+            }
+            if (!_options.SplitFile)
+                WriteToFile("GeneratedTables.txt", sb.ToString());
+        }
+
+        public void WriteToFile(string fileName, string text)
+        {
+            using var fs = File.Create(fileName);
+            using var sw = new StreamWriter(fs);
+            sw.Write(text);
+            Console.WriteLine($"File \"{fs.Name}\" created.");
         }
 
         private string TableToText(MetaTable table)
@@ -41,7 +53,8 @@ namespace UpgradeTableCreator
                 tableName = table.Name;
                 Console.WriteLine(" ---Table name could not be changed! (30 character limit)");
             }
-            Console.WriteLine($"Write table {table.Id} \"{table.Name}\" -> {_currentTableId} \"{tableName}\"");
+            table.NewName = tableName;
+            Console.WriteLine($"Write table {table.Id} \"{table.Name}\" -> {_currentTableId} \"{table.NewName}\"");
 
             if (!HasFieldsInOptionRange(table))
             {
@@ -79,7 +92,10 @@ namespace UpgradeTableCreator
 
             var fieldProps = "{{{0};;{1};{2};{3}}}";
 
-            foreach (var field in GetFilteredFields(table))
+            foreach (var field in table.Fields)
+                field.NewName = field.Name;
+
+            foreach (var field in table.GetFilteredFields(_options))
             {
                 var fieldLength = string.IsNullOrEmpty(field.DataLength) ? string.Empty : field.DataLength;
                 var optionString = $"OptionString={field.OptionString};";
@@ -97,7 +113,8 @@ namespace UpgradeTableCreator
                     Console.WriteLine($" -----Field \"{field.Name}\" could not be renamed! (30 character limit)");
                 }
 
-                sb.AppendLine(string.Format(fieldProps, field.Id, fieldName, $"{field.Datatype}{fieldLength}", optionString));
+                field.NewName = fieldName;
+                sb.AppendLine(string.Format(fieldProps, field.Id, field.NewName, $"{field.Datatype}{fieldLength}", optionString));
             }
 
             sb.AppendLine("}");
@@ -131,27 +148,9 @@ namespace UpgradeTableCreator
             return sb.ToString();
         }
 
-        private List<Field> GetFilteredFields(MetaTable table)
-        {
-            var fields = new List<Field>();
-
-            foreach (var field in table.Fields)
-            {
-                if (!field.Enabled || field.FieldClass == "FlowField")
-                    continue;
-
-                if ((field.Id < _options.FromFieldId || (_options.ToFieldId != 0 && field.Id > _options.ToFieldId)) && !field.IsInPrimaryKeys)
-                    continue;
-
-                fields.Add(field);
-            }
-
-            return fields;
-        }
-
         private bool HasFieldsInOptionRange(MetaTable table)
         {
             return table.Fields.Any(m => m.Enabled && m.FieldClass != "FlowField" && m.Id >= _options.FromFieldId && (m.Id <= _options.ToFieldId || _options.ToFieldId == 0));
-        }
+        }        
     }
 }

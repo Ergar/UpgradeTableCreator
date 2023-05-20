@@ -9,6 +9,8 @@ namespace UpgradeTableCreator
         public int Id { get; init; }
         [XmlAttribute]
         public string Name { get; init; }
+        [XmlIgnore]
+        public string NewName { get; set; }
         [XmlAttribute]
         public string Datatype { get; init; }
         [XmlAttribute]

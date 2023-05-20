@@ -12,6 +12,10 @@
         public string TablePrefix { get; set; } = "UPG ";
         public string FieldPrefix { get; set; }
         public string VersionList { get; set; } = "UPG";
+        public bool ExportToAL { get; set; }
+        public bool SplitFile { get; set; }
+        public bool KeepTableId { get; set; }
+        public string FromTxtFile { get; set; }
 
         public SqlMetaTableReaderOption()
         { }
@@ -63,17 +67,32 @@
                     case "VERSIONLIST":
                         VersionList = split[1];
                         break;
+                    case "EXPORTTOAL":
+                        ExportToAL = true;
+                        break;
+                    case "SPLITFILE":
+                        SplitFile = true;
+                        break;
+                    case "KEEPTABLEID":
+                        KeepTableId = true;
+                        break;
+                    case "FROMTXTFILE":
+                        FromTxtFile = split[1];
+                        break;
                     default:
                         Console.WriteLine($"Argument \"{argUp}\" not found!");
                         break;
                 }
             }
 
-            if (string.IsNullOrEmpty(Server))
-                throw new ArgumentException("Server argument must be set!");
+            if (string.IsNullOrEmpty(FromTxtFile))
+            {
+                if (string.IsNullOrEmpty(Server))
+                    throw new ArgumentException("Server argument must be set!");
 
-            if (string.IsNullOrEmpty(Database))
-                throw new ArgumentException("Database argument must be set!");
+                if (string.IsNullOrEmpty(Database))
+                    throw new ArgumentException("Database argument must be set!");
+            }
         }
 
         private int ParseArgAsInt(string argName, string argValue)
@@ -83,6 +102,11 @@
             else
                 Console.WriteLine($"Argument \"{argName}\" could not be parsed into an integer!");
             return 0;
+        }
+
+        public string GetConnectionString()
+        {
+            return @$"Server={Server};Database={Database};Trusted_Connection=True;";
         }
     }
 }

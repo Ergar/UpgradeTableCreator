@@ -6,7 +6,8 @@ namespace UpgradeTableCreator
     {
         private string _fileName;
         private bool _usingFile;
-        private string _xml;
+
+        public string Xml { get; set; }
 
         public XmlTableReader()
         {
@@ -16,11 +17,6 @@ namespace UpgradeTableCreator
         {
             _fileName = fileName;
             _usingFile = true;
-        }
-
-        public void SetXml(string xml)
-        {
-            _xml = xml;
         }
 
         public List<MetaTable> GetTables()
@@ -41,7 +37,7 @@ namespace UpgradeTableCreator
             }
             else
             {
-                using var sr = new StringReader(_xml);
+                using var sr = new StringReader(Xml);
                 table = (MetaTable)serializer.Deserialize(sr);
             }
 

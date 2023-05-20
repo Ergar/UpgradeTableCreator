@@ -2,7 +2,7 @@
   "profiles": {
     "UpgradeTableCreator": {
       "commandName": "Project",
-      "commandLineArgs": "server=CD-UPDATE\\MSSQLSERVER2016 Database=InSilvaEG_Live FromTableId=10 ToTableId=20 FromFieldId=50000 StartNewTableId=90000"
+      "commandLineArgs": "FromTxtFile=TAB_13_18.txt"
     }
   }
 }

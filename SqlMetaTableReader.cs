@@ -16,9 +16,9 @@ namespace UpgradeTableCreator
         public List<MetaTable> GetMetaTables()
         {
             var tables = new List<MetaTable>();
-            var compressedData = new List<byte[]>();
+            var compressedData = new Dictionary<int, byte[]>();
 
-            var connectionString = @$"Server={_options.Server};Database={_options.Database};Trusted_Connection=True;";
+            var connectionString = _options.GetConnectionString();
             Console.WriteLine("Using connectionstring: " + connectionString);
 
             var sw = Stopwatch.StartNew();
@@ -38,7 +38,7 @@ namespace UpgradeTableCreator
                     while (dataReader.Read())
                     {
                         var output = (byte[])dataReader[0];
-                        compressedData.Add(output);
+                        compressedData.Add(dataReader.GetInt32(1), output);
                     }
                     sw.Stop();
                     Console.WriteLine($"FINISHED ({sw.ElapsedMilliseconds}ms)");
@@ -61,7 +61,7 @@ namespace UpgradeTableCreator
 
             foreach (var data in compressedData)
             {
-                using (var ms = new MemoryStream(data, 4, data.Length - 4))
+                using (var ms = new MemoryStream(data.Value, 4, data.Value.Length - 4))
                 using (var df = new DeflateStream(ms, CompressionMode.Decompress))
                 {
                     resultMs.SetLength(0);
@@ -69,14 +69,23 @@ namespace UpgradeTableCreator
                     resultMs.Position = 0;
                     sr.DiscardBufferedData();
                     sr.BaseStream.Seek(0, SeekOrigin.Begin);
-                    tableReader.SetXml(sr.ReadToEnd());
+                    tableReader.Xml = sr.ReadToEnd();
                 }
                 tables.AddRange(tableReader.GetTables());
+
+                WriteXMLToFile(data.Key, tableReader.Xml);
             }
             sw.Stop();
             Console.WriteLine($"FINISHED ({sw.ElapsedMilliseconds}ms)");
 
             return tables;
+        }
+
+        private void WriteXMLToFile(int tableId, string xmlContent)
+        {
+            var path = $"Table_{tableId}.txt";
+            using var sw = File.CreateText(path);
+            sw.Write(xmlContent);
         }
     }
 }
