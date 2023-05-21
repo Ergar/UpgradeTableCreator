@@ -109,6 +109,8 @@ namespace UpgradeTableCreator
                     sb.AppendLine("FieldClass = FlowField;");
                     sb.AppendLine($"//@TODO CalcFormula = ;");
                 }
+                if (!string.IsNullOrEmpty(field.TableRelation))
+                    sb.AppendLine($"TableRelation={field.TableRelation};");
                 sb.AppendLine("}");
 
                 field.NewName = fieldName;

@@ -49,6 +49,7 @@ namespace UpgradeTableCreator
             var readingField = false;
             var readingKeys = false;
             var readingKey = false;
+            var readingTableRelation = false;
 
             foreach (var line in File.ReadLines(Path.Combine(".\\", _fromTextFile)))
             {
@@ -111,6 +112,14 @@ namespace UpgradeTableCreator
                             var fcSplit = splitted[4].Trim().Split("=");
                             field.FieldClass = fcSplit[1];
                         }
+                        else if (splitted[4].Contains("TableRelation"))
+                        {
+                            var trValue = splitted[4].Remove(0, splitted[4].IndexOf("=") + 1);
+                            field.TableRelation = trValue;
+
+                            if (splitted.Length <= 5)
+                                readingTableRelation = true;
+                        }
                     }
                     else if (readingKeys && lineStack.Peek().Item1 == LineType.Open)
                     {
@@ -136,6 +145,14 @@ namespace UpgradeTableCreator
                         field.FieldClass = l.Split("=")[1].TrimEnd(';');
                     else if (l.StartsWith("OptionString"))
                         field.OptionString = l.Split("=")[1].TrimEnd(';', '}', ' ').Trim('[', ']');
+
+                    if (readingTableRelation)
+                    {
+                        if (l.EndsWith(';'))
+                            readingTableRelation = false;
+
+                        field.TableRelation += " " + l.TrimEnd(';');
+                    }
                 }
                 else if (readingKey)
                 {

@@ -22,6 +22,8 @@ namespace UpgradeTableCreator
         [XmlAttribute]
         public string OptionString { get; set; }
 
+        public string TableRelation { get; set; }
+
         [XmlIgnore]
         public bool IsInPrimaryKeys { get; set; }
 
