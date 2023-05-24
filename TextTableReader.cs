@@ -168,7 +168,7 @@ namespace UpgradeTableCreator
                     else if (l.StartsWith("CalcFormula"))
                     {
                         var cfValue = l.Remove(0, l.IndexOf("=") + 1);
-                        field.CalcFormula = cfValue.Trim();
+                        field.CalcFormula = cfValue.TrimEnd(';', ' ');
                         if (l.EndsWith(','))
                             readingCalcFormula = true;
                     }
