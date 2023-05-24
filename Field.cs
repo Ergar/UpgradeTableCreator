@@ -22,7 +22,10 @@ namespace UpgradeTableCreator
         [XmlAttribute]
         public string OptionString { get; set; }
 
+        [XmlIgnore]
         public string TableRelation { get; set; }
+        [XmlIgnore]
+        public string CalcFormula { get; set; }
 
         [XmlIgnore]
         public bool IsInPrimaryKeys { get; set; }

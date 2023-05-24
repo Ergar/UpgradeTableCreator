@@ -1,10 +1,20 @@
-﻿using System.Xml.Serialization;
+﻿using System.Net.NetworkInformation;
+using System.Xml.Serialization;
 
 namespace UpgradeTableCreator
 {
+    public enum TableSource
+    {
+        Xml,
+        Txt
+    }
+
     [Serializable]
     public class MetaTable
     {
+        [XmlIgnore]
+        public TableSource TableSource { get; set; }
+
         [XmlAttribute(AttributeName = "ID")]
         public int Id { get; set; }
 
@@ -42,7 +52,16 @@ namespace UpgradeTableCreator
 
         public void CalcPrimaryKeys()
         {
+            if (TableSource == TableSource.Xml)
+                CalcPrimaryKeysXml();
+            else if (TableSource == TableSource.Txt)
+                CalcPrimaryKeysTxt();
+        }
+
+        private void CalcPrimaryKeysXml()
+        {
             var primaryKey = Keys[0];
+            primaryKey.IsPrimary = true;
             var keyFieldIds = primaryKey.GetFieldIds();
 
             foreach (var field in Fields)
@@ -53,6 +72,18 @@ namespace UpgradeTableCreator
                     PrimaryKeyFields.Add(field.Id, field);
                 }
             }
+        }
+        private void CalcPrimaryKeysTxt()
+        {
+            var primaryKey = Keys[0];
+            primaryKey.IsPrimary = true;
+
+            foreach (var field in Fields)
+                if (primaryKey.Fields.Contains(field.Name))
+                {
+                    field.IsInPrimaryKeys = true;
+                    PrimaryKeyFields.Add(field.Id, field);
+                }
         }
 
         public List<Field> GetFilteredFields(SqlMetaTableReaderOption options)

@@ -50,6 +50,8 @@ namespace UpgradeTableCreator
             var readingKeys = false;
             var readingKey = false;
             var readingTableRelation = false;
+            var readingCalcFormula = false;
+            var readingComment = false;
 
             foreach (var line in File.ReadLines(Path.Combine(".\\", _fromTextFile)))
             {
@@ -60,7 +62,15 @@ namespace UpgradeTableCreator
                 {
                     lineStack.Push(Tuple.Create(LineType.Table, lineNo));
                     var match = regex.Match(line);
-                    table = new MetaTable(match.Groups[0].Value);
+                    var id = 0;
+                    var idMatch = Regex.Match(line, @"\d+");
+                    if (idMatch.Success)
+                        id = int.Parse(idMatch.Value);
+                    table = new MetaTable(match.Groups[0].Value.TrimStart())
+                    {
+                        Id = id,
+                        TableSource = TableSource.Txt
+                    };
                     Console.Write($"Reading table {table.Name}...");
                 }
                 else if (l.StartsWith("OBJECT-PROPERTIES"))
@@ -79,6 +89,8 @@ namespace UpgradeTableCreator
                     lineStack.Push(Tuple.Create(LineType.Keys, lineNo));
                     readingKeys = true;
                 }
+                else if (l.StartsWith("FIELDGROUPS"))
+                    lineStack.Push(Tuple.Create(LineType.Fieldgroups, lineNo));
                 else if (l.StartsWith("{"))
                 {
                     if (readingFields && lineStack.Peek().Item1 == LineType.Open)
@@ -93,7 +105,7 @@ namespace UpgradeTableCreator
                         if (idMatch.Success)
                             id = int.Parse(idMatch.Value);
 
-                        var fieldType = splitted[3].Trim();
+                        var fieldType = splitted[3].TrimEnd('}').Trim();
                         var size = string.Empty;
                         var sizeRegex = new Regex(@"[^a-zA-Z].*");
                         if (sizeRegex.IsMatch(fieldType))
@@ -107,18 +119,21 @@ namespace UpgradeTableCreator
                             Enabled = true
                         };
 
-                        if (splitted[4].Contains("FieldClass"))
+                        if (splitted.Length > 4)
                         {
-                            var fcSplit = splitted[4].Trim().Split("=");
-                            field.FieldClass = fcSplit[1];
-                        }
-                        else if (splitted[4].Contains("TableRelation"))
-                        {
-                            var trValue = splitted[4].Remove(0, splitted[4].IndexOf("=") + 1);
-                            field.TableRelation = trValue;
+                            if (splitted[4].Contains("FieldClass"))
+                            {
+                                var fcSplit = splitted[4].Trim().Split("=");
+                                field.FieldClass = fcSplit[1];
+                            }
+                            else if (splitted[4].Contains("TableRelation"))
+                            {
+                                var trValue = splitted[4].Remove(0, splitted[4].IndexOf("=") + 1);
+                                field.TableRelation = trValue;
 
-                            if (splitted.Length <= 5)
-                                readingTableRelation = true;
+                                if (splitted.Length <= 5)
+                                    readingTableRelation = true;
+                            }
                         }
                     }
                     else if (readingKeys && lineStack.Peek().Item1 == LineType.Open)
@@ -137,7 +152,12 @@ namespace UpgradeTableCreator
                             key.Clustered = true;
                     }
                     else
-                        lineStack.Push(Tuple.Create(LineType.Open, lineNo));
+                    {
+                        if (readingField)
+                            readingComment = true;
+                        else
+                            lineStack.Push(Tuple.Create(LineType.Open, lineNo));
+                    }
                 }
                 else if (readingField)
                 {
@@ -145,6 +165,20 @@ namespace UpgradeTableCreator
                         field.FieldClass = l.Split("=")[1].TrimEnd(';');
                     else if (l.StartsWith("OptionString"))
                         field.OptionString = l.Split("=")[1].TrimEnd(';', '}', ' ').Trim('[', ']');
+                    else if (l.StartsWith("CalcFormula"))
+                    {
+                        var cfValue = l.Remove(0, l.IndexOf("=") + 1);
+                        field.CalcFormula = cfValue.Trim();
+                        if (l.EndsWith(','))
+                            readingCalcFormula = true;
+                    }
+                    else if (readingCalcFormula)
+                    {
+                        if (l.EndsWith(';') || l.EndsWith('}'))
+                            readingCalcFormula = false;
+
+                        field.CalcFormula += l.TrimEnd(';', '}', ' ');
+                    }
 
                     if (readingTableRelation)
                     {
@@ -152,7 +186,7 @@ namespace UpgradeTableCreator
                             readingTableRelation = false;
 
                         field.TableRelation += " " + l.TrimEnd(';');
-                    }
+                    }                    
                 }
                 else if (readingKey)
                 {
@@ -165,6 +199,12 @@ namespace UpgradeTableCreator
                     if (lineStack.Count == 0)
                         continue;
 
+                    if (readingComment)
+                    {
+                        readingComment = false;
+                        continue;
+                    }
+
                     if (lineStack.Peek().Item1 == LineType.Open)
                         lineStack.Pop();
 
@@ -172,6 +212,7 @@ namespace UpgradeTableCreator
                     switch (peek)
                     {
                         case LineType.Table:
+                            table.CalcPrimaryKeys();
                             tables.Add(table);
                             lineStack.Pop();
                             Console.WriteLine($" {table.Fields.Count} fields.. FINISHED");
@@ -179,6 +220,7 @@ namespace UpgradeTableCreator
                         case LineType.ObjectProperties:
                         case LineType.TableProperties:
                         case LineType.Code:
+                        case LineType.Fieldgroups:
                             lineStack.Pop();
                             break;
                         case LineType.Fields:
@@ -198,8 +240,6 @@ namespace UpgradeTableCreator
                             table.Keys.Add(key);
                             readingKey = false;
                             lineStack.Pop();
-                            break;
-                        case LineType.Fieldgroups:
                             break;
                         case LineType.Open:
                             break;

@@ -39,7 +39,11 @@ namespace UpgradeTableCreator
 
         public void WriteToFile(string fileName, string text)
         {
-            using var fs = File.Create(fileName);
+            const string folderName = "AL Files";
+            if (!Directory.Exists(folderName))
+                Directory.CreateDirectory(folderName);
+
+            using var fs = File.Create(Path.Combine(folderName, fileName));
             using var sw = new StreamWriter(fs);
             sw.Write(text);
             Console.WriteLine($"File \"{fs.Name}\" created.");
@@ -50,7 +54,10 @@ namespace UpgradeTableCreator
             var sb = new StringBuilder();
 
             var tableId = table.Id;
-            if (table.IsCustomerTable && !_options.KeepTableId)
+            if (_options.KeepTableId)
+                _currentTableId = table.Id;
+
+            if (table.IsCustomerTable)
                 tableId = _currentTableId++;
             else
                 tableId = _currentTableExtId++;
@@ -85,7 +92,7 @@ namespace UpgradeTableCreator
             foreach (var field in table.Fields)
                 field.NewName = field.Name;
 
-            foreach (var field in table.GetFilteredFields(_options))
+            foreach (var field in table.GetFilteredFieldsForAL(_options))
             {
                 var fieldName = $"{_options.FieldPrefix}{field.Name}";
 
@@ -101,13 +108,13 @@ namespace UpgradeTableCreator
                 field.NewName = fieldName;
                 sb.AppendLine(string.Format(fieldFormat, field.Id, field.NewName, field.Datatype, fieldLength));
                 sb.AppendLine("{");
-                sb.AppendLine($"Caption = \"{field.Name}\";");
+                sb.AppendLine($"Caption = '{field.Name}';");
                 if (field.Datatype == "Option")
                     sb.AppendLine($"OptionMembers = {TransformOptionStringToAL(field.OptionString)};");
                 if (field.FieldClass == "FlowField")
                 {
                     sb.AppendLine("FieldClass = FlowField;");
-                    sb.AppendLine($"//@TODO CalcFormula = ;");
+                    sb.AppendLine($"CalcFormula = {field.CalcFormula};");
                 }
                 if (!string.IsNullOrEmpty(field.TableRelation))
                     sb.AppendLine($"TableRelation={field.TableRelation};");
@@ -126,12 +133,32 @@ namespace UpgradeTableCreator
                 return string.Empty;
 
             var sb = new StringBuilder();
+            sb.AppendLine("keys");
+            sb.AppendLine("{");
 
-            foreach (var key in table.Keys)
+            for (var i = 0; i < table.Keys.Count; i++)
             {
+                var key = table.Keys[i];
                 if (!key.Enabled)
                     continue;
+
+                var keyName = key.IsPrimary ? "PK" : $"Key{i + 1}";
+                var fields = string.Empty;
+                for (var j = 0; j < key.GetFields().Count(); j++)
+                {
+                    if (fields.Length > 0)
+                        fields += ", ";
+                    fields += $"\"{key.GetFields()[j]}\"";
+                }
+                sb.AppendLine($"key({keyName}; {fields})");
+                sb.AppendLine("{");
+
+                if (key.Clustered)
+                    sb.AppendLine("Clustered = true;");
+
+                sb.AppendLine("}");
             }
+            sb.AppendLine("}");
 
             return sb.ToString();
         }

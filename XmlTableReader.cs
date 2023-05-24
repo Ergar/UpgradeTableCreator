@@ -41,6 +41,7 @@ namespace UpgradeTableCreator
                 table = (MetaTable)serializer.Deserialize(sr);
             }
 
+            table.TableSource = TableSource.Xml;
             table.CalcPrimaryKeys();
             tables.Add(table);
 

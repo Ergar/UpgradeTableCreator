@@ -14,6 +14,9 @@ namespace UpgradeTableCreator
         [XmlAttribute]
         public bool Clustered { get; set; }
 
+        [XmlIgnore]
+        public bool IsPrimary { get; set; }
+
         public Key()
         {
         }
